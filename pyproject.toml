@@ -1,0 +1,32 @@
+[project]
+name = "stt"
+version = "0.1.0"
+description = "Dead simple speech-to-text"
+classifiers = ["Private :: Do Not Upload"]
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "keyboard>=0.13.5",
+    "langchain-community>=0.3.12",
+    "langchain>=0.3.12",
+    "openai-whisper",
+    "sounddevice>=0.5.1",
+    "pytest>=8.3.4",
+    "torch>=2.5.1",
+    "pyperclip>=1.9.0",
+    "click>=8.1.7",
+]
+
+[project.scripts]
+stt = "stt:main"
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+default = false
+
+[dependency-groups]
+dev = [
+    "pyinstaller>=6.11.1",
+    "setuptools>=70.0.0",
+]
