@@ -5,11 +5,14 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Start",
+            "name": "STT",
             "type": "debugpy",
             "request": "launch",
+            "console": "integratedTerminal",
             "program": "${workspaceFolder}/src/stt.py",
-            "console": "integratedTerminal"
+            "args": [
+                "--debug"
+            ]
         },
         {
             "name": "Run File",

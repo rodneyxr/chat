@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
+import importlib
 import logging
+import os
 import queue
 import sys
 import threading
@@ -8,38 +10,30 @@ import warnings
 import click
 import keyboard
 import numpy as np
-import pyperclip
 import sounddevice as sd
 import torch
 import whisper
 from langchain.prompts import PromptTemplate
 from langchain_community.llms.ollama import Ollama
 
+from commands import CommandInput
+from config import JARVIS_PROMPT, SYSTEM_PROMPT
+
 warnings.filterwarnings("ignore")
 
-
-SYSTEM_PROMPT = """
-You are a voice dictation engine. You will be given input and you must dictate the text as accurately as possible. You should not correct grammar or punctuation errors. If the input is a single word, you should spell it out. If the input is a sentence, you should capitalize the first word and add punctuation at the end.
-Do not add any additional information or instructions in your output; it must simply be what the user is trying to type with their voice.
-
-If you come across "space" or "period" or any other special character, you should dictate the corresponding character.
-
-Translate the following input: {text}
-"""
-
-JARVIS_PROMPT = """
-Your name is Jarvis, an advanced voice dictation engine. You will be given input in the form of transcribed text from voice. You must determine what the user is trying to type and only output the text that the user would type directly.
-Do not add any additional information or instructions in your output; it must simply be what the user is trying to type with their voice.
-
-Translate the following input: {text}
-"""
-
 prompt = PromptTemplate(template=SYSTEM_PROMPT, input_variables=["text"])
+llm = Ollama(model="llama3.2:3b-instruct-q5_K_M", temperature=0)
 
 
 class VoiceDictation:
     def __init__(
-        self, model_name: str, hotkey: str, sample_rate: int, channels: int, device, post_processing: bool
+        self,
+        model_name: str,
+        hotkey: str,
+        sample_rate: int,
+        channels: int,
+        device,
+        post_processing: bool,
     ):
         self.hotkey = hotkey
         self.sample_rate = sample_rate
@@ -51,7 +45,6 @@ class VoiceDictation:
 
         logging.info(f"Loading whisper model '{model_name}' on {device.type}...")
         self.whisper_model = whisper.load_model(model_name, device=device)
-        self.llm = Ollama(model="llama3.2:3b-instruct-q5_K_M", temperature=0)
 
     def audio_callback(self, indata, frames, time, status):
         if status:
@@ -60,12 +53,26 @@ class VoiceDictation:
 
     def process_with_ollama(self, text):
         try:
-            processed_text = self.llm.invoke(prompt.format(text=text))
+            processed_text = llm.invoke(prompt.format(text=text))
             logging.info(f"Ollama processed text: {processed_text}")
             return processed_text.lstrip(" ")
         except Exception as e:
             logging.error(f"Ollama error: {e}")
             return text
+
+    def load_commands(self):
+        command_map = {}
+        commands_dir = os.path.join(os.path.dirname(__file__), "commands")
+        for filename in os.listdir(commands_dir):
+            if filename.endswith(".py") and filename != "__init__.py":
+                command_name = filename[:-3]
+                module = importlib.import_module(f"commands.{command_name}")
+                command_map[command_name] = {
+                    "desc": command_name,
+                    "action": module.action,
+                    "args": module.args if hasattr(module, "args") else [command_name],
+                }
+        return command_map
 
     def handle_commands(self, transcribed_text):
         """
@@ -78,74 +85,22 @@ class VoiceDictation:
         def arg(i):
             return args[i].strip(".!,?") if len(args) > i else None
 
-        # Special multi-word commands
-        if len(args) > 1 and arg(0) == "hey" and arg(1) == "jarvis":
-            logging.info("COMMAND: hey jarvis")
-            new_text = " ".join(transcribed_text.split(" ")[2:])
-            jarvis_prompt = PromptTemplate(
-                template=JARVIS_PROMPT, input_variables=["text"]
-            )
-            return self.llm.invoke(jarvis_prompt.format(text=new_text)), True
+        # Load commands dynamically
+        command_map = self.load_commands()
 
-        # Simple commands mapping
-        command_map = {
-            "paste": {
-                "desc": "paste",
-                "action": lambda: pyperclip.paste()
-                if isinstance(pyperclip.paste(), str)
-                else "",
-            },
-            "undo": {
-                "desc": "undo",
-                "action": lambda: keyboard.press_and_release("ctrl+z"),
-            },
-            "redo": {
-                "desc": "redo",
-                "action": lambda: keyboard.press_and_release("ctrl+y"),
-            },
-            "delete": {
-                "desc": "delete",
-                "action": lambda: keyboard.press_and_release("ctrl+backspace"),
-            },
-            "backspace": {
-                "desc": "backspace",
-                "action": lambda: keyboard.press_and_release("ctrl+backspace"),
-            },
-            "space": {
-                "desc": "space",
-                "action": lambda: keyboard.press_and_release("space"),
-            },
-            "comma": {
-                "desc": "comma",
-                "action": lambda: keyboard.press_and_release("comma"),
-            },
-            "help": {
-                "desc": "help",
-                "action": lambda: logging.info(
-                    "\nAvailable commands:"
-                    "\n  - hey jarvis"
-                    "\n  - paste"
-                    "\n  - undo"
-                    "\n  - redo"
-                    "\n  - delete/backspace"
-                    "\n  - replace line"
-                ),
-            },
-        }
-
-        # Handle one-word commands
-        if arg(0) in command_map and len(args) == 1:
-            cmd_info = command_map[arg(0)]
-            logging.info(f"COMMAND: {cmd_info['desc']}")
-            result = cmd_info["action"]()
-            return (result if result else "", True)
-
-        # Handle "replace line"
-        if arg(0) == "replace" and arg(1) in ["line", "lime"]:
-            logging.info("COMMAND: replace line (WIP)")
-            keyboard.press_and_release("end")
-            keyboard.send("shift+home shift+home")
-            return " ".join(transcribed_text.split(" ")[2:]), True
+        # Handle commands
+        for cmd_name, cmd_info in command_map.items():
+            for cmd_arg in cmd_info["args"]:
+                if text_lower.startswith(cmd_arg):
+                    logging.info(f"COMMAND: {cmd_info['desc']}")
+                    args: list[str] = cmd_arg.split()
+                    nargs = len(args)
+                    logging.debug(f"Args: {args}")
+                    tmp = transcribed_text.split(maxsplit=nargs)
+                    new_text = " ".join(tmp[nargs:]) if len(tmp) > nargs else ""
+                    cmd_input = CommandInput(args, new_text)
+                    result = cmd_info["action"](cmd_input)
+                    return (result if result else "", True)
 
         # No command recognized
         return transcribed_text, False
@@ -215,11 +170,16 @@ class VoiceDictation:
 @click.option("--hotkey", default="F24", help="Hotkey to hold while speaking")
 @click.option("--samplerate", default=16000, help="Audio sample rate")
 @click.option("--channels", default=1, help="Number of audio channels")
-@click.option("--verbose", is_flag=True, help="Enable debug output")
-@click.option("--post-processing", is_flag=True, default=False, help="Enable LLM post-processing of transcribed text")
-def main(model, hotkey, samplerate, channels, verbose, post_processing):
+@click.option("--debug", is_flag=True, help="Enable debug output")
+@click.option(
+    "--post-processing",
+    is_flag=True,
+    default=False,
+    help="Enable LLM post-processing of transcribed text",
+)
+def main(model, hotkey, samplerate, channels, debug, post_processing):
     logging.basicConfig(
-        level=logging.DEBUG if verbose else logging.INFO,
+        level=logging.DEBUG if debug else logging.INFO,
         format="%(asctime)s - %(levelname)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
