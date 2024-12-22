@@ -1,4 +1,7 @@
 import keyboard
 
-def action(args: list[str], text: str):
+from commands import CommandInput
+
+
+def action(cmd: CommandInput):
     keyboard.press_and_release("ctrl+backspace")

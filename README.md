@@ -20,3 +20,9 @@ Install from git repository:
 ```sh
 uv run --python 3.11 pip install -U git+https://github.com/rodneyxr/chat.git@dev --extra-index-url https://download.pytorch.org/whl/cu124
 ```
+
+With SSH:
+
+```sh
+uv run --python 3.11 pip install -U git+ssh://github.com/rodneyxr/chat.git@dev --extra-index-url https://download.pytorch.org/whl/cu124
+```

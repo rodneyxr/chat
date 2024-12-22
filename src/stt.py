@@ -17,7 +17,7 @@ from langchain.prompts import PromptTemplate
 from langchain_community.llms.ollama import Ollama
 
 from commands import CommandInput
-from config import JARVIS_PROMPT, SYSTEM_PROMPT
+from config import SYSTEM_PROMPT
 
 warnings.filterwarnings("ignore")
 
@@ -42,6 +42,7 @@ class VoiceDictation:
         self.recording = False
         self.audio_queue = queue.Queue()
         self.post_processing = post_processing
+        self.command_map = self.load_commands()
 
         logging.info(f"Loading whisper model '{model_name}' on {device.type}...")
         self.whisper_model = whisper.load_model(model_name, device=device)
@@ -72,38 +73,59 @@ class VoiceDictation:
                     "action": module.action,
                     "args": module.args if hasattr(module, "args") else [command_name],
                 }
+        # Create a dictionary to map command arguments to a list of command information
+        arg_to_command = {}
+        for cmd_info in command_map.values():
+            for cmd_arg in cmd_info["args"]:
+                arg_to_command[cmd_arg] = cmd_info
+        self.arg_to_command = arg_to_command
         return command_map
 
-    def handle_commands(self, transcribed_text):
+    def handle_commands(self, transcribed_text: str):
         """
         Check if the transcribed text represents a command and handle it.
         Returns a tuple (processed_text, was_command).
         """
-        text_lower = transcribed_text.lower().strip()
-        args = text_lower.split()
-
-        def arg(i):
-            return args[i].strip(".!,?") if len(args) > i else None
-
-        # Load commands dynamically
-        command_map = self.load_commands()
-
-        # Handle commands
-        for cmd_name, cmd_info in command_map.items():
-            for cmd_arg in cmd_info["args"]:
-                if text_lower.startswith(cmd_arg):
-                    logging.info(f"COMMAND: {cmd_info['desc']}")
-                    args: list[str] = cmd_arg.split()
-                    nargs = len(args)
-                    logging.debug(f"Args: {args}")
-                    tmp = transcribed_text.split(maxsplit=nargs)
-                    new_text = " ".join(tmp[nargs:]) if len(tmp) > nargs else ""
-                    cmd_input = CommandInput(args, new_text)
-                    result = cmd_info["action"](cmd_input)
-                    return (result if result else "", True)
-
+        arg_search = transcribed_text.lower().strip().replace(".!,?", "")
+        for command in self.arg_to_command:
+            if arg_search.startswith(command):
+                cmd_info = self.arg_to_command[command]
+                logging.info(f"COMMAND: {cmd_info['desc']}")
+                args: list[str] = command.split()
+                nargs = len(args)
+                logging.debug(f"Args: {args}")
+                tmp = transcribed_text.split(maxsplit=nargs)
+                new_text = " ".join(tmp[nargs:]) if len(tmp) > nargs else ""
+                cmd_input = CommandInput(args, new_text)
+                result = cmd_info["action"](cmd_input)
+                return result, True
         # No command recognized
-        return transcribed_text, False
+        return None, False
+
+    def process_text(self, text: str):
+        # Process command (if it is one)
+        cmd_text, was_command = self.handle_commands(text)
+        if was_command:
+            if not cmd_text:
+                # Command executed, no text to type
+                return
+            else:
+                text = cmd_text
+
+        # Optional post-processing
+        if self.post_processing:
+            logging.info("Analyzing...")
+            processed_text = self.process_with_ollama(text)
+        else:
+            processed_text = text
+
+        # Type the resulting text
+        if "\n" in processed_text:
+            for line in processed_text.split("\n"):
+                keyboard.write(line, delay=0.01)
+                keyboard.press_and_release("shift+enter")
+        else:
+            keyboard.write(processed_text, delay=0.01)
 
     def transcribe_audio(self):
         logging.info(f"Press and hold {self.hotkey} to speak")
@@ -134,28 +156,9 @@ class VoiceDictation:
                 logging.info("Transcribing...")
                 audio_data = np.array(buffer, dtype=np.float32)
                 result = self.whisper_model.transcribe(audio_data, language="en")
-                transcribed_text = result["text"].rstrip()
+                transcribed_text = result["text"].strip()
                 logging.info(f"Raw transcription: {transcribed_text}")
-
-                processed_text, was_command = self.handle_commands(transcribed_text)
-                if was_command and not processed_text:
-                    # Command executed, no text to type
-                    logging.info(f"Press and hold {self.hotkey} to speak")
-                    continue
-
-                # Optional post-processing
-                if self.post_processing and not was_command:
-                    logging.info("Analyzing...")
-                    processed_text = self.process_with_ollama(processed_text)
-
-                # Type the resulting text
-                if "\n" in processed_text:
-                    for line in processed_text.split("\n"):
-                        keyboard.write(line, delay=0.01)
-                        keyboard.press_and_release("shift+enter")
-                else:
-                    keyboard.write(processed_text, delay=0.01)
-
+                self.process_text(transcribed_text)
                 logging.info(f"Press and hold {self.hotkey} to speak")
 
     def on_press(self):
