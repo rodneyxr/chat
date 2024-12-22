@@ -825,6 +825,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pygetwindow"
+version = "0.0.9"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pyrect" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e1/70/c7a4f46dbf06048c6d57d9489b8e0f9c4c3d36b7479f03c5ca97eaa2541d/PyGetWindow-0.0.9.tar.gz", hash = "sha256:17894355e7d2b305cd832d717708384017c1698a90ce24f6f7fbf0242dd0a688", size = 9699 }
+
+[[package]]
 name = "pyinstaller"
 version = "6.11.1"
 source = { registry = "https://pypi.org/simple" }
@@ -3349,6 +3358,12 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/30/23/2f0a3efc4d6a32f3b63cdff36cd398d9701d26cda58e3ab97ac79fb5e60d/pyperclip-1.9.0.tar.gz", hash = "sha256:b7de0142ddc81bfc5c7507eea19da920b92252b548b96186caf94a5e2527d310", size = 20961 }
 
 [[package]]
+name = "pyrect"
+version = "0.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/cb/04/2ba023d5f771b645f7be0c281cdacdcd939fe13d1deb331fc5ed1a6b3a98/PyRect-0.2.0.tar.gz", hash = "sha256:f65155f6df9b929b67caffbd57c0947c5ae5449d3b580d178074bffb47a09b78", size = 17219 }
+
+[[package]]
 name = "pytest"
 version = "8.3.4"
 source = { registry = "https://pypi.org/simple" }
@@ -3510,6 +3525,7 @@ dependencies = [
     { name = "langchain" },
     { name = "langchain-community" },
     { name = "openai-whisper" },
+    { name = "pygetwindow" },
     { name = "pyperclip" },
     { name = "pytest" },
     { name = "sounddevice" },
@@ -3529,6 +3545,7 @@ requires-dist = [
     { name = "langchain", specifier = ">=0.3.12" },
     { name = "langchain-community", specifier = ">=0.3.12" },
     { name = "openai-whisper" },
+    { name = "pygetwindow", specifier = ">=0.0.9" },
     { name = "pyperclip", specifier = ">=1.9.0" },
     { name = "pytest", specifier = ">=8.3.4" },
     { name = "sounddevice", specifier = ">=0.5.1" },

@@ -6,6 +6,7 @@ import queue
 import sys
 import threading
 import warnings
+from collections import defaultdict
 
 import click
 import keyboard
@@ -86,7 +87,30 @@ class VoiceDictation:
         Check if the transcribed text represents a command and handle it.
         Returns a tuple (processed_text, was_command).
         """
-        arg_search = transcribed_text.lower().strip().replace(".!,?", "")
+        # TODO: make this a debug option (allows dynamic loading of commands)
+        self.load_commands()
+
+        arg_search = (
+            transcribed_text.lower()
+            .strip()
+            .replace(".", "")
+            .replace("!", "")
+            .replace(",", "")
+            .replace("?", "")
+        )
+
+        if arg_search == "help":
+            command_groups = defaultdict(list)
+            for command, value in self.arg_to_command.items():
+                command_groups[str(value)].append(command)
+
+            log_message = "\nAvailable commands:\n"
+            for value, commands in command_groups.items():
+                log_message += f"  - {' / '.join(commands)}\n"
+
+            logging.info(log_message)
+            return None, True
+
         for command in self.arg_to_command:
             if arg_search.startswith(command):
                 cmd_info = self.arg_to_command[command]
