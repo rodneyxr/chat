@@ -27,6 +27,7 @@ llm = Ollama(model="llama3.2:3b-instruct-q5_K_M", temperature=0)
 
 
 class VoiceDictation:
+    # FIXME: Short recording + lengthy transcription text length should be ignored. (quick click of hotkey should not be transcribed)
     def __init__(
         self,
         model_name: str,
@@ -35,6 +36,7 @@ class VoiceDictation:
         channels: int,
         device,
         post_processing: bool,
+        hot_reload: bool = False,
     ):
         self.hotkey = hotkey
         self.sample_rate = sample_rate
@@ -43,7 +45,8 @@ class VoiceDictation:
         self.recording = False
         self.audio_queue = queue.Queue()
         self.post_processing = post_processing
-        self.command_map = self.load_commands()
+        self.command_map = self.load_commands(reload=hot_reload)
+        self.hot_reload = hot_reload
 
         logging.info(f"Loading whisper model '{model_name}' on {device.type}...")
         self.whisper_model = whisper.load_model(model_name, device=device)
@@ -62,13 +65,15 @@ class VoiceDictation:
             logging.error(f"Ollama error: {e}")
             return text
 
-    def load_commands(self):
+    def load_commands(self, reload=False):
         command_map = {}
         commands_dir = os.path.join(os.path.dirname(__file__), "commands")
         for filename in os.listdir(commands_dir):
             if filename.endswith(".py") and filename != "__init__.py":
                 command_name = filename[:-3]
                 module = importlib.import_module(f"commands.{command_name}")
+                if reload:
+                    importlib.reload(module)
                 command_map[command_name] = {
                     "desc": command_name,
                     "action": module.action,
@@ -87,17 +92,10 @@ class VoiceDictation:
         Check if the transcribed text represents a command and handle it.
         Returns a tuple (processed_text, was_command).
         """
-        # TODO: make this a debug option (allows dynamic loading of commands)
-        self.load_commands()
+        # if hot_reload mode is enabled, reload the commands on every invocation
+        self.command_map = self.load_commands(reload=self.hot_reload)
 
-        arg_search = (
-            transcribed_text.lower()
-            .strip()
-            .replace(".", "")
-            .replace("!", "")
-            .replace(",", "")
-            .replace("?", "")
-        )
+        arg_search = transcribed_text.lower().strip().translate(str.maketrans("", "", ".,!?"))
 
         if arg_search == "help":
             command_groups = defaultdict(list)
@@ -121,8 +119,12 @@ class VoiceDictation:
                 tmp = transcribed_text.split(maxsplit=nargs)
                 new_text = " ".join(tmp[nargs:]) if len(tmp) > nargs else ""
                 cmd_input = CommandInput(args, new_text)
-                result = cmd_info["action"](cmd_input)
-                return result, True
+                try:
+                    result = cmd_info["action"](cmd_input)
+                    return result, True
+                except Exception as e:
+                    logging.error(f"Error executing command: {e}")
+                    return None, True
         # No command recognized
         return None, False
 
@@ -197,7 +199,7 @@ class VoiceDictation:
 @click.option("--hotkey", default="F24", help="Hotkey to hold while speaking")
 @click.option("--samplerate", default=16000, help="Audio sample rate")
 @click.option("--channels", default=1, help="Number of audio channels")
-@click.option("--debug", is_flag=True, help="Enable debug output")
+@click.option("--debug", is_flag=True, help="Enable debug mode")
 @click.option(
     "--post-processing",
     is_flag=True,
@@ -217,7 +219,7 @@ def main(model, hotkey, samplerate, channels, debug, post_processing):
     else:
         logging.info("No GPU detected. Using CPU for Whisper.")
 
-    vd = VoiceDictation(model, hotkey, samplerate, channels, device, post_processing)
+    vd = VoiceDictation(model, hotkey, samplerate, channels, device, post_processing, hot_reload=debug)
 
     threading.Thread(target=vd.transcribe_audio, daemon=True).start()
     keyboard.on_press_key(hotkey, lambda _: vd.on_press())
