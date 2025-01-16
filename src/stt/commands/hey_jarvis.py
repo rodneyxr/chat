@@ -1,7 +1,8 @@
 from langchain.prompts import PromptTemplate
-from commands import CommandInput
-from config import JARVIS_PROMPT
-from stt import llm
+
+from stt.stt import llm
+from stt.commands import CommandInput
+from stt.config import JARVIS_PROMPT
 
 args = ["hey jarvis"]
 

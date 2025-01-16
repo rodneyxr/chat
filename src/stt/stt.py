@@ -17,8 +17,8 @@ import whisper
 from langchain.prompts import PromptTemplate
 from langchain_community.llms.ollama import Ollama
 
-from commands import CommandInput
-from config import SYSTEM_PROMPT
+from stt.commands import CommandInput
+from stt.config import SYSTEM_PROMPT
 
 warnings.filterwarnings("ignore")
 
@@ -71,7 +71,7 @@ class VoiceDictation:
         for filename in os.listdir(commands_dir):
             if filename.endswith(".py") and filename != "__init__.py":
                 command_name = filename[:-3]
-                module = importlib.import_module(f"commands.{command_name}")
+                module = importlib.import_module(f"stt.commands.{command_name}")
                 if reload:
                     importlib.reload(module)
                 command_map[command_name] = {
@@ -95,7 +95,9 @@ class VoiceDictation:
         # if hot_reload mode is enabled, reload the commands on every invocation
         self.command_map = self.load_commands(reload=self.hot_reload)
 
-        arg_search = transcribed_text.lower().strip().translate(str.maketrans("", "", ".,!?"))
+        arg_search = (
+            transcribed_text.lower().strip().translate(str.maketrans("", "", ".,!?"))
+        )
 
         if arg_search == "help":
             command_groups = defaultdict(list)
@@ -197,7 +199,6 @@ class VoiceDictation:
 @click.command(help="A friendly CLI for voice dictation using Whisper and Ollama.")
 @click.option("--model", default="turbo", help="Whisper model name")
 @click.option("--hotkey", default="F24", help="Hotkey to hold while speaking")
-@click.option("--samplerate", default=16000, help="Audio sample rate")
 @click.option("--channels", default=1, help="Number of audio channels")
 @click.option("--debug", is_flag=True, help="Enable debug mode")
 @click.option(
@@ -206,7 +207,7 @@ class VoiceDictation:
     default=False,
     help="Enable LLM post-processing of transcribed text",
 )
-def main(model, hotkey, samplerate, channels, debug, post_processing):
+def main(model, hotkey, channels, debug, post_processing):
     logging.basicConfig(
         level=logging.DEBUG if debug else logging.INFO,
         format="%(asctime)s - %(levelname)s - %(message)s",
@@ -219,7 +220,9 @@ def main(model, hotkey, samplerate, channels, debug, post_processing):
     else:
         logging.info("No GPU detected. Using CPU for Whisper.")
 
-    vd = VoiceDictation(model, hotkey, samplerate, channels, device, post_processing, hot_reload=debug)
+    vd = VoiceDictation(
+        model, hotkey, 16000, channels, device, post_processing, hot_reload=debug
+    )
 
     threading.Thread(target=vd.transcribe_audio, daemon=True).start()
     keyboard.on_press_key(hotkey, lambda _: vd.on_press())

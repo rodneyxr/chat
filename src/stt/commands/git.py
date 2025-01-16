@@ -1,8 +1,18 @@
-from commands import CommandInput
 import keyboard
 
-# TODO: find a better way to handle misspronunciations/misunderstandings
-args = ["git status", "git pull", "git add", "get status", "get pull", "get add", "get ad", "get at"]
+from stt.commands import CommandInput
+
+# TODO: find a better way to handle mispronunciations/misunderstandings
+args = [
+    "git status",
+    "git pull",
+    "git add",
+    "get status",
+    "get pull",
+    "get add",
+    "get ad",
+    "get at",
+]
 
 
 def action(cmd: CommandInput):

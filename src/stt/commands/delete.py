@@ -1,6 +1,6 @@
 import keyboard
 
-from commands import CommandInput
+from stt.commands import CommandInput
 
 
 def action(cmd: CommandInput):

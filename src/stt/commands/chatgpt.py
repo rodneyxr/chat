@@ -1,11 +1,10 @@
 import sys
 import time
 
-from httpx import get
 import keyboard
 import pygetwindow
 
-from commands import CommandInput
+from stt.commands import CommandInput
 from pygetwindow import Win32Window
 import logging
 
@@ -16,13 +15,13 @@ def action(cmd: CommandInput):
     already_active = False
 
     window = pygetwindow.getActiveWindow()
-    logging.debug(f"{window=}, {window.title=}, {window.isMinimized=}, {window.isMaximized=}, {window.isActive=}, {window.size=}, {window.area=}, {window.visible=}")
+    logging.debug(
+        f"{window=}, {window.title=}, {window.isMinimized=}, {window.isMaximized=}, {window.isActive=}, {window.size=}, {window.area=}, {window.visible=}"
+    )
     if window.title == "ChatGPT" and window.visible:
         print("ChatGPT window is already active.")
         window.show()
         already_active = True
-
-    
 
     if not already_active:
         window = get_window_with_exact_title("ChatGPT")
@@ -30,13 +29,13 @@ def action(cmd: CommandInput):
 
         if window:
             logging.debug(f"Found window: {window.title}")
-            # FIXME: Obtaining focus via activate() doesn't work. 
+            # FIXME: Obtaining focus via activate() doesn't work.
             # Workaround is to hide and restore with application shortcut.
             window.hide()
 
         # Open ChatGPT
         keyboard.press_and_release("alt+space")
-    
+
         # Wait for the window named 'ChatGPT' to focus with a timeout of 2 seconds
         start_time = time.time()
         while True:
@@ -44,7 +43,10 @@ def action(cmd: CommandInput):
             if window and window.visible:
                 break
             if time.time() - start_time > 2:
-                print("Timeout: 'ChatGPT' window did not come into focus within 2 seconds.", file=sys.stderr)
+                print(
+                    "Timeout: 'ChatGPT' window did not come into focus within 2 seconds.",
+                    file=sys.stderr,
+                )
                 return
             time.sleep(0.1)
 
@@ -66,8 +68,9 @@ def action(cmd: CommandInput):
     keyboard.write(cmd.text, delay=0.01)
 
     # Submit the prompt
-    return # FIXME: re-enable this
+    return  # FIXME: re-enable this
     keyboard.press_and_release("enter")
+
 
 def get_window_with_exact_title(title: str) -> Win32Window | None:
     potential_windows = pygetwindow.getWindowsWithTitle(title)
@@ -77,8 +80,10 @@ def get_window_with_exact_title(title: str) -> Win32Window | None:
         return window[0]
     return None
 
+
 def center_window(window: pygetwindow.Win32Window):
     import ctypes
+
     user32 = ctypes.windll.user32
     screen_width = user32.GetSystemMetrics(0)  # SM_CXSCREEN
     screen_height = user32.GetSystemMetrics(1)  # SM_CYSCREEN
