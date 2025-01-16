@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [project.scripts]
-stt = "stt.stt:main"
+stt = "stt.__main__:main"
 
 [build-system]
 requires = ["hatchling"]

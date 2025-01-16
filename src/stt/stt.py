@@ -1,16 +1,15 @@
-#!/usr/bin/env python3
 import importlib
 import logging
 import os
 import queue
-import sys
 import threading
+import time
 import warnings
 from collections import defaultdict
 
-import click
 import keyboard
 import numpy as np
+import pyperclip
 import sounddevice as sd
 import torch
 import whisper
@@ -30,13 +29,14 @@ class VoiceDictation:
     # FIXME: Short recording + lengthy transcription text length should be ignored. (quick click of hotkey should not be transcribed)
     def __init__(
         self,
-        model_name: str,
-        hotkey: str,
-        sample_rate: int,
-        channels: int,
-        device,
-        post_processing: bool,
+        hotkey: str = "F1",
+        model_name: str = "base.en",
+        post_processing: bool = False,
+        sample_rate: int = 16000,
+        channels: int = 1,
+        device: str | None = None,
         hot_reload: bool = False,
+        type_mode: bool = False,
     ):
         self.hotkey = hotkey
         self.sample_rate = sample_rate
@@ -47,6 +47,10 @@ class VoiceDictation:
         self.post_processing = post_processing
         self.command_map = self.load_commands(reload=hot_reload)
         self.hot_reload = hot_reload
+        self.type_mode = type_mode
+
+        if device is None:
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         logging.info(f"Loading whisper model '{model_name}' on {device.type}...")
         self.whisper_model = whisper.load_model(model_name, device=device)
@@ -147,13 +151,28 @@ class VoiceDictation:
         else:
             processed_text = text
 
-        # Type the resulting text
-        if "\n" in processed_text:
-            for line in processed_text.split("\n"):
-                keyboard.write(line, delay=0.01)
-                keyboard.press_and_release("shift+enter")
+        if self.type_mode:
+            # Type the resulting text
+            if "\n" in processed_text:
+                for line in processed_text.split("\n"):
+                    keyboard.write(line, delay=0.01)
+                    keyboard.press_and_release("shift+enter")
+            else:
+                keyboard.write(processed_text, delay=0.01)
         else:
-            keyboard.write(processed_text, delay=0.01)
+            # Save the original clipboard content to restore it after pasting (only works for text; not media)
+            original_clipboard = pyperclip.paste()
+
+            # Load the processed text to the clipboard
+            pyperclip.copy(processed_text)
+            time.sleep(0.01)
+
+            # Paste the processed text
+            keyboard.press_and_release("ctrl+v")
+            time.sleep(0.01)
+
+            # Restore the original clipboard content
+            pyperclip.copy(original_clipboard)
 
     def transcribe_audio(self):
         logging.info(f"Press and hold {self.hotkey} to speak")
@@ -194,46 +213,3 @@ class VoiceDictation:
 
     def on_release(self):
         self.transcribing.clear()
-
-
-@click.command(help="A friendly CLI for voice dictation using Whisper and Ollama.")
-@click.option("--model", default="turbo", help="Whisper model name")
-@click.option("--hotkey", default="F24", help="Hotkey to hold while speaking")
-@click.option("--channels", default=1, help="Number of audio channels")
-@click.option("--debug", is_flag=True, help="Enable debug mode")
-@click.option(
-    "--post-processing",
-    is_flag=True,
-    default=False,
-    help="Enable LLM post-processing of transcribed text",
-)
-def main(model, hotkey, channels, debug, post_processing):
-    logging.basicConfig(
-        level=logging.DEBUG if debug else logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    if device.type == "cuda":
-        logging.info("GPU detected. Using GPU for Whisper.")
-    else:
-        logging.info("No GPU detected. Using CPU for Whisper.")
-
-    vd = VoiceDictation(
-        model, hotkey, 16000, channels, device, post_processing, hot_reload=debug
-    )
-
-    threading.Thread(target=vd.transcribe_audio, daemon=True).start()
-    keyboard.on_press_key(hotkey, lambda _: vd.on_press())
-    keyboard.on_release_key(hotkey, lambda _: vd.on_release())
-
-    try:
-        keyboard.wait()
-    except KeyboardInterrupt:
-        logging.info("Exiting...")
-        sys.exit(0)
-
-
-if __name__ == "__main__":
-    main()
