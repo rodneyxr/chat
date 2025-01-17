@@ -1,6 +1,6 @@
 import keyboard
 
-from stt.commands import CommandInput
+from sttpy.commands import CommandInput
 
 # TODO: find a better way to handle mispronunciations/misunderstandings
 args = [

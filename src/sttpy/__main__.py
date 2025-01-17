@@ -5,9 +5,9 @@ import threading
 import click
 import keyboard
 
-from stt.config import load_config, save_config
-from stt.stt import VoiceDictation
-from stt.utils.hotkey import prompt_for_hotkey
+from sttpy.config import load_config, save_config
+from sttpy.stt import VoiceDictation
+from sttpy.utils.hotkey import prompt_for_hotkey
 
 
 @click.command(help="Voice dictation (speech-to-text) completely on device.")

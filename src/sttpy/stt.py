@@ -16,8 +16,8 @@ import whisper
 from langchain.prompts import PromptTemplate
 from langchain_community.llms.ollama import Ollama
 
-from stt.commands import CommandInput
-from stt.config import SYSTEM_PROMPT
+from sttpy.commands import CommandInput
+from sttpy.config import SYSTEM_PROMPT
 
 warnings.filterwarnings("ignore")
 
@@ -75,7 +75,7 @@ class VoiceDictation:
         for filename in os.listdir(commands_dir):
             if filename.endswith(".py") and filename != "__init__.py":
                 command_name = filename[:-3]
-                module = importlib.import_module(f"stt.commands.{command_name}")
+                module = importlib.import_module(f"sttpy.commands.{command_name}")
                 if reload:
                     importlib.reload(module)
                 command_map[command_name] = {

@@ -4,7 +4,7 @@ import time
 import keyboard
 import pygetwindow
 
-from stt.commands import CommandInput
+from sttpy.commands import CommandInput
 from pygetwindow import Win32Window
 import logging
 

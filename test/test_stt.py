@@ -1,5 +1,5 @@
 import pytest
-from src.stt import process_with_ollama
+from src.sttpy import process_with_ollama
 
 
 def test_basic_commands():
