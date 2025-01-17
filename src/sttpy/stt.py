@@ -37,6 +37,7 @@ class VoiceDictation:
         device: str | None = None,
         hot_reload: bool = False,
         type_mode: bool = False,
+        paste_delay: float = 0.1,  # Delay between copying to clipboard and pasting
     ):
         self.hotkey = hotkey
         self.sample_rate = sample_rate
@@ -48,6 +49,7 @@ class VoiceDictation:
         self.command_map = self.load_commands(reload=hot_reload)
         self.hot_reload = hot_reload
         self.type_mode = type_mode
+        self.paste_delay = paste_delay
 
         if device is None:
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -165,11 +167,11 @@ class VoiceDictation:
 
             # Load the processed text to the clipboard
             pyperclip.copy(processed_text)
-            time.sleep(0.01)
+            time.sleep(self.paste_delay)
 
             # Paste the processed text
             keyboard.press_and_release("ctrl+v")
-            time.sleep(0.01)
+            time.sleep(self.paste_delay)
 
             # Restore the original clipboard content
             pyperclip.copy(original_clipboard)

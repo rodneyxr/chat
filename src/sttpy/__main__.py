@@ -27,8 +27,16 @@ from sttpy.utils.hotkey import prompt_for_hotkey
 @click.option(
     "--type-mode", is_flag=True, help="Use keystrokes instead of pasting text"
 )
+@click.option(
+    "--paste-delay", default=0.1, help="Delay between copying to clipboard and pasting"
+)
 def main(
-    stt: str, hotkey: str | None, debug: bool, post_processing: bool, type_mode: bool
+    stt: str,
+    hotkey: str | None,
+    debug: bool,
+    post_processing: bool,
+    type_mode: bool,
+    paste_delay: float,
 ):
     logging.basicConfig(
         level=logging.DEBUG if debug else logging.INFO,
@@ -39,6 +47,7 @@ def main(
     config = load_config()
 
     # Prompt for hotkey if 'prompt' is passed, otherwise use the hotkey flag if specified, otherwise use the config
+    # --hotkey always takes precedence over the config value
     if hotkey:
         if hotkey.lower() == "prompt":
             hotkey = prompt_for_hotkey()
@@ -48,8 +57,7 @@ def main(
             save_config(config)
     else:
         hotkey = config["hotkey"]
-
-    print(f"Hotkey: {hotkey}")
+    logging.debug(f"Hotkey: {hotkey}")
 
     vd = VoiceDictation(
         model_name=stt,
@@ -57,6 +65,7 @@ def main(
         post_processing=post_processing,
         hot_reload=True,
         type_mode=type_mode,
+        paste_delay=paste_delay,
     )
 
     threading.Thread(target=vd.transcribe_audio, daemon=True).start()

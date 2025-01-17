@@ -22,12 +22,13 @@ Usage: stt [OPTIONS]
   Voice dictation (speech-to-text) completely on device.
 
 Options:
-  --stt TEXT         Whisper model name (tiny.en, base.en, turbo, ...)
-  --hotkey TEXT      Hotkey to hold while speaking
-  --debug            Enable debug mode
-  --post-processing  Enable LLM post-processing of transcribed text
-  --type-mode        Use keystrokes instead of pasting text
-  --help             Show this message and exit.
+  --stt TEXT           Whisper model name (tiny.en, base.en, turbo, ...)
+  --hotkey TEXT        Hotkey to hold while speaking
+  --debug              Enable debug mode
+  --post-processing    Enable LLM post-processing of transcribed text
+  --type-mode          Use keystrokes instead of pasting text
+  --paste-delay FLOAT  Delay between copying to clipboard and pasting
+  --help               Show this message and exit.
 ```
 
 ## Examples
