@@ -26,3 +26,10 @@ With SSH:
 ```sh
 uv run --python 3.11 pip install -U git+ssh://github.com/rodneyxr/chat.git@dev --extra-index-url https://download.pytorch.org/whl/cu124
 ```
+
+## Before commit
+
+```sh
+uv tool run ruff check --fix
+uv rool run ruff format
+```

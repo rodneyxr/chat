@@ -175,7 +175,7 @@ class VoiceDictation:
             pyperclip.copy(original_clipboard)
 
     def transcribe_audio(self):
-        logging.info(f"Press and hold {self.hotkey} to speak")
+        logging.info(f"Press and hold '{self.hotkey}' to speak")
 
         while True:
             self.transcribing.wait()
@@ -206,7 +206,7 @@ class VoiceDictation:
                 transcribed_text = result["text"].strip()
                 logging.info(f"Raw transcription: {transcribed_text}")
                 self.process_text(transcribed_text)
-                logging.info(f"Press and hold {self.hotkey} to speak")
+                logging.info(f"Press and hold '{self.hotkey}' to speak")
 
     def on_press(self):
         self.transcribing.set()

@@ -5,16 +5,18 @@ import threading
 import click
 import keyboard
 
+from stt.config import load_config, save_config
 from stt.stt import VoiceDictation
+from stt.utils.hotkey import prompt_for_hotkey
 
 
 @click.command(help="Voice dictation (speech-to-text) completely on device.")
 @click.option(
     "--stt",
     default="tiny.en",
-    help="Whisper model name (tiny.en, base.en, small.en, medium.en, large, turbo)",
+    help="Whisper model name (tiny.en, base.en, turbo, ...)",
 )
-@click.option("--hotkey", default="F24", help="Hotkey to hold while speaking")
+@click.option("--hotkey", default=None, help="Hotkey to hold while speaking")
 @click.option("--debug", is_flag=True, help="Enable debug mode")
 @click.option(
     "--post-processing",
@@ -25,33 +27,29 @@ from stt.stt import VoiceDictation
 @click.option(
     "--type-mode", is_flag=True, help="Use keystrokes instead of pasting text"
 )
-def main(stt: str, hotkey: str, debug: bool, post_processing: bool, type_mode: bool):
+def main(
+    stt: str, hotkey: str | None, debug: bool, post_processing: bool, type_mode: bool
+):
     logging.basicConfig(
         level=logging.DEBUG if debug else logging.INFO,
         format="%(asctime)s - %(levelname)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    if hotkey.lower() == "auto":
-        print("Press the key or combination of keys you want to use as the hotkey:")
-        pressed_keys = set()
-        while True:
-            event = keyboard.read_event(suppress=False)
-            if event.event_type == keyboard.KEY_DOWN:
-                if event.name not in pressed_keys:
-                    pressed_keys.add(event.name)
-                    print(f"Key pressed: {event.name}")
-            elif event.event_type == keyboard.KEY_UP:
-                if event.name in pressed_keys:
-                    pressed_keys.remove(event.name)
-                    print(f"Key released: {event.name}")
-                if event.name == "esc":
-                    print("Hotkey selection confirmed.")
-                    break
-        hotkey = "+".join(pressed_keys)
-        print(f"Hotkey '{hotkey}' confirmed.")
-        # TODO: Test this, save the response to a config
-        return
+    config = load_config()
+
+    # Prompt for hotkey if 'prompt' is passed, otherwise use the hotkey flag if specified, otherwise use the config
+    if hotkey:
+        if hotkey.lower() == "prompt":
+            hotkey = prompt_for_hotkey()
+            print(f"Hotkey confirmed: {hotkey}")
+
+            config["hotkey"] = hotkey
+            save_config(config)
+    else:
+        hotkey = config["hotkey"]
+
+    print(f"Hotkey: {hotkey}")
 
     vd = VoiceDictation(
         model_name=stt,
@@ -62,8 +60,12 @@ def main(stt: str, hotkey: str, debug: bool, post_processing: bool, type_mode: b
     )
 
     threading.Thread(target=vd.transcribe_audio, daemon=True).start()
-    keyboard.on_press_key(hotkey, lambda _: vd.on_press())
-    keyboard.on_release_key(hotkey, lambda _: vd.on_release())
+
+    # Register the hotkeys
+    keyboard.add_hotkey(hotkey, lambda: vd.on_press(), suppress=True)
+    keyboard.add_hotkey(
+        hotkey, lambda: vd.on_release(), trigger_on_release=True, suppress=True
+    )
 
     try:
         keyboard.wait()
