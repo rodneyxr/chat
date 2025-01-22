@@ -1,12 +1,12 @@
+import logging
 import sys
 import time
 
 import keyboard
 import pygetwindow
+from pygetwindow import Win32Window
 
 from sttpy.commands import CommandInput
-from pygetwindow import Win32Window
-import logging
 
 args = ["chatgpt", "chat gpt", "chat"]
 

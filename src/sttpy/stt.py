@@ -77,14 +77,20 @@ class VoiceDictation:
         for filename in os.listdir(commands_dir):
             if filename.endswith(".py") and filename != "__init__.py":
                 command_name = filename[:-3]
-                module = importlib.import_module(f"sttpy.commands.{command_name}")
-                if reload:
-                    importlib.reload(module)
-                command_map[command_name] = {
-                    "desc": command_name,
-                    "action": module.action,
-                    "args": module.args if hasattr(module, "args") else [command_name],
-                }
+                try:
+                    module = importlib.import_module(f"sttpy.commands.{command_name}")
+                    if reload:
+                        importlib.reload(module)
+                    command_map[command_name] = {
+                        "desc": command_name,
+                        "action": module.action,
+                        "args": module.args
+                        if hasattr(module, "args")
+                        else [command_name],
+                    }
+                except Exception as e:
+                    logging.warning(f"Failed to load command '{command_name}': {e}")
+                    continue
         # Create a dictionary to map command arguments to a list of command information
         arg_to_command = {}
         for cmd_info in command_map.values():
