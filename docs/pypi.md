@@ -12,6 +12,9 @@ pip install sttpy
 
 # If you have a GPU and want to use the CUDA version
 pip install sttpy[cuda] --extra-index-url https://download.pytorch.org/whl/cu124
+
+# AMD ROCm (linux only)
+pip install sttpy[rocm] --extra-index-url https://download.pytorch.org/whl/rocm6.2
 ```
 
 ## Usage

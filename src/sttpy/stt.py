@@ -53,6 +53,8 @@ class VoiceDictation:
 
         if device is None:
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            # list available devices
+            logging.info(f"Available devices: {torch.cuda.device_count()}")
 
         logging.info(f"Loading whisper model '{model_name}' on {device.type}...")
         self.whisper_model = whisper.load_model(model_name, device=device)

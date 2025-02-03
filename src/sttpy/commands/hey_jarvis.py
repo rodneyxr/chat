@@ -1,10 +1,10 @@
 from langchain.prompts import PromptTemplate
 
-from sttpy.stt import llm
 from sttpy.commands import CommandInput
 from sttpy.config import JARVIS_PROMPT
+from sttpy.stt import llm
 
-args = ["hey jarvis"]
+args = ["hey jarvis", "jarvis"]
 
 
 def action(cmd: CommandInput):
