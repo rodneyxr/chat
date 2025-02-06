@@ -5,18 +5,28 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Start",
+            "name": "STT",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/src/stt.py",
-            "console": "integratedTerminal"
-        },
+            "console": "integratedTerminal",
+            "module": "stt",
+            "args": [
+                "--debug",
+                "--stt",
+                "${input:sttOption}"
+            ]
+        }
+    ],
+    "inputs": [
         {
-            "name": "Run File",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${file}",
-            "console": "integratedTerminal"
+            "id": "sttOption",
+            "type": "pickString",
+            "description": "Choose the whisper model size",
+            "options": [
+                "tiny.en",
+                "turbo"
+            ],
+            "default": "tiny.en"
         }
     ]
 }
